@@ -100,14 +100,15 @@ class AjaxRequest {
 				$this->response["content"] = "";
 				break;
 
+
 			// ------------------------------------------------------------------------------------
 			// PLUGINS (installation + reset)
 			// ------------------------------------------------------------------------------------
 
-			case "installationDataTypes":
+			case "installDataTypes":
 				Core::init("installationDatabaseReady");
 				if (!Core::checkIsInstalled()) {
-					$this->setDataTypes();
+                    $this->installDataTypes();
 				}
 				break;
 
@@ -120,104 +121,67 @@ class AjaxRequest {
 			case "resetDataTypes":
 				Core::init("resetPlugins");
 				if (Core::checkIsLoggedIn() && Core::$user->isAdmin()) {
-					$this->setDataTypes();
+					$this->installDataTypes();
 				}
 				break;
 
-			case "installationSaveDataTypes":
+			case "installExportTypes":
 				Core::init("installationDatabaseReady");
 				if (!Core::checkIsInstalled()) {
-					$folders = $this->post["folders"];
-					$response = Settings::setSetting("installedDataTypes", $folders);
-					$this->response["success"] = $response["success"];
-					$this->response["content"] = $response["errorMessage"];
-				}
-				break;
-
-			case "resetSaveDataTypes":
-				Core::init("resetPlugins");
-				if (Core::checkIsLoggedIn() && Core::$user->isAdmin()) {
-					$folders = $this->post["folders"];
-					$response = Settings::setSetting("installedDataTypes", $folders);
-					$this->response["success"] = $response["success"];
-					$this->response["content"] = $response["errorMessage"];
-				}
-				break;
-
-			case "installationExportTypes":
-				Core::init("installationDatabaseReady");
-				if (!Core::checkIsInstalled()) {
-					$this->setExportTypes();
+					$this->installExportTypes();
 				}
 				break;
 
 			case "resetExportTypes":
 				Core::init("resetPlugins");
 				if (Core::checkIsLoggedIn() && Core::$user->isAdmin()) {
-					$this->setExportTypes();
+					$this->installExportTypes();
 				}
 				break;
 
-			case "installationSaveExportTypes":
+            case "completeInstallation":
+                Core::init("installationDatabaseReady");
+                if (!Core::checkIsInstalled()) {
+                    $response = Account::updateSelectedPlugins(1, $this->post["dataTypes"], $this->post["exportTypes"], $this->post["countries"]);
+					$this->response["success"] = $response["success"];
+					$this->response["content"] = $response["message"];
+                    Settings::setSetting("installationComplete", "yes");
+
+                    // at this point the user's finished the installation.
+                    if (!Minification::createAppStartFile()) {
+                        // need error handling here
+                    }
+                    return;
+                }
+                break;
+
+            case "saveUserPlugins":
+                Core::init();
+                if (Core::checkIsLoggedIn()) {
+                    $response = Account::updateSelectedPlugins(Core::$user->getAccountID(), $this->post["dataTypes"],
+							$this->post["exportTypes"], $this->post["countries"]);
+                    $this->response["success"] = $response["success"];
+					$this->response["content"] = $response["message"];
+                }
+				if (Core::$user->isAdmin()) {
+					Minification::createAppStartFile();
+				}
+                break;
+
+			case "installCountries":
 				Core::init("installationDatabaseReady");
 				if (!Core::checkIsInstalled()) {
-					$folders = $this->post["folders"];
-					$response = Settings::setSetting("installedExportTypes", $folders);
-					$this->response["success"] = $response["success"];
-					$this->response["content"] = $response["errorMessage"];
-				}
-				break;
-
-			case "resetSaveExportTypes":
-				Core::init("resetPlugins");
-				if (Core::checkIsLoggedIn() && Core::$user->isAdmin()) {
-					$folders = $this->post["folders"];
-					$response = Settings::setSetting("installedExportTypes", $folders);
-					$this->response["success"] = $response["success"];
-					$this->response["content"] = $response["errorMessage"];
-				}
-				break;
-
-			case "installationCountries":
-				Core::init("installationDatabaseReady");
-				if (!Core::checkIsInstalled()) {
-					$this->setCountries();
+					$this->installCountries();
 				}
 				break;
 
 			case "resetCountries":
 				Core::init("resetPlugins");
 				if (Core::checkIsLoggedIn() && Core::$user->isAdmin()) {
-					$this->setCountries();
+					$this->installCountries();
 				}
 				break;
 
-			case "installationSaveCountries":
-				Core::init("installationDatabaseReady");
-				if (!Core::checkIsInstalled()) {
-					$folders = $this->post["folders"];
-					Settings::setSetting("installedCountries", $folders);
-					$response = Settings::setSetting("installationComplete", "yes");
-					$this->response["success"] = $response["success"];
-					$this->response["content"] = $response["errorMessage"];
-				}
-				break;
-
-			case "resetSaveCountries":
-				Core::init("resetPlugins");
-				if (Core::checkIsLoggedIn() && Core::$user->isAdmin()) {
-					$folders = $this->post["folders"];
-					Settings::setSetting("installedCountries", $folders);
-					$this->response["success"] = true; // ...!
-				}
-				break;
-
-			// called anytime the plugins were updated (either via the installation or core script). This
-			// runs any post-processes that need to be done
-			case "updatedPluginsPostProcess":
-				Core::init();
-				$this->response["success"] = (Minification::createAppStartFile()) ? 1 : 0;
-				break;
 
 			// ------------------------------------------------------------------------------------
 			// USER ACCOUNTS
@@ -298,11 +262,20 @@ class AjaxRequest {
 				}
 				break;
 
+            case "saveGlobalSettings":
+                Core::init();
+				if (Core::checkIsLoggedIn() && Core::$user->isAdmin() || Core::$user->isAnonymousAdmin()) {
+					list($success, $message) = Settings::updateGlobalSettings($this->post);
+					$this->response["success"] = $success;
+					$this->response["content"] = $message;
+				}
+                break;
+
 			case "copyDataSet":
 				Core::init();
-				$response = Core::$user->copyConfiguration($this->post);
-				$this->response["success"] = $response["success"];
-				$this->response["content"] = $response["message"];
+                $response = Core::$user->copyConfiguration($this->post);
+                $this->response["success"] = $response["success"];
+                $this->response["content"] = $response["message"];
 				break;
 
 			case "deleteDataSets":
@@ -382,7 +355,6 @@ class AjaxRequest {
 				$this->response["content"]    = $response["content"];
 				$this->response["isComplete"] = $response["isComplete"];
 				break;
-
 		}
 	}
 
@@ -393,83 +365,130 @@ class AjaxRequest {
 		return Utils::utf8_encode_array($this->response);
 	}
 
+    private function installDataTypes() {
+        $groupedDataTypes = DataTypePluginHelper::getDataTypePlugins("installationDatabaseReady", false);
+        $L = Core::$language->getCurrentLanguageStrings();
+        $hasError = false;
+        $response = array();
+        $count = 0;
+        $folders = array();
 
-	private function setDataTypes() {
-		$index = $this->post["index"];
-		$groupedDataTypes = DataTypePluginHelper::getDataTypePlugins("installationDatabaseReady", false);
-		$dataTypes        = DataTypePluginHelper::getDataTypeList($groupedDataTypes);
 
-		if ($index >= count($dataTypes)) {
-			$this->response["success"] = 1;
-			$this->response["content"] = "";
-			$this->response["isComplete"] = true;
-		} else {
-			// attempt to install this data type
-			$currDataType = $dataTypes[$index];
-			$this->response["dataTypeName"] = $currDataType->getName();
-			$this->response["dataTypeFolder"] = $currDataType->folder;
-			$this->response["isComplete"] = false;
+        while (list($group_name, $dataTypes) = each($groupedDataTypes)) {
+            $data = array();
+            foreach ($dataTypes as $currDataType) {
+                try {
+                    list($success, $content) = $currDataType->install();
+                    if (!$success) {
+                        $hasError = true;
+                        break;
+                    }
+                    $folder = $currDataType->getFolder();
+                    $data[] = array(
+                        "name"   => $currDataType->getName(),
+                        "folder" => $folder,
+                        "desc"   => $currDataType->getDesc()
+                    );
+                    $folders[] = $folder;
+                    $count++;
+                } catch (Exception $e) {
+                    $hasError = true;
+                    break;
+                }
+            }
 
-			try {
-				list($success, $content) = $currDataType->install();
-				$this->response["success"] = $success;
-				$this->response["content"] = $content;
-			} catch (Exception $e) {
-				$this->response["success"] = false;
-				$this->response["content"] = "Unknown error.";
-			}
-		}
-	}
+            // organized in this data structure because objects lose their order
+            $response[] = array(
+                "group_name" => $L[$group_name],
+                "data_types" => $data
+            );
+        }
 
-	private function setExportTypes() {
-		$index = $this->post["index"];
-		$exportTypes = ExportTypePluginHelper::getExportTypePlugins("installationDatabaseReady", false);
+        // need error handling here
+        Settings::setSetting("installedDataTypes", implode(",", $folders));
 
-		if ($index >= count($exportTypes)) {
-			$this->response["success"] = 1;
-			$this->response["content"] = "";
-			$this->response["isComplete"] = true;
-		} else {
-			// attempt to install this export type
-			$currExportType = $exportTypes[$index];
-			$this->response["exportTypeName"] = $currExportType->getName();
-			$this->response["exportTypeFolder"] = $currExportType->folder;
-			$this->response["isComplete"] = false;
-			try {
-				list($success, $content) = $currExportType->install();
-				$this->response["success"] = $success;
-				$this->response["content"] = $content;
-			} catch (Exception $e) {
-				$this->response["success"] = false;
-				$this->response["content"] = "Unknown error.";
-			}
-		}
-	}
+        $this->response["success"] = !$hasError;
+        $this->response["content"] = array(
+            "total" => $count,
+            "results" => $response
+        );
+    }
 
-	private function setCountries() {
-		$index = $this->post["index"];
-		$countryPlugins = CountryPluginHelper::getCountryPlugins(false);
+    private function installExportTypes() {
+        $exportTypes = ExportTypePluginHelper::getExportTypePlugins("installationDatabaseReady", false);
+        $hasError = false;
+        $results = array();
+        $count = 0;
+        $folders = array();
 
-		if ($index >= count($countryPlugins)) {
-			$this->response["success"] = 1;
-			$this->response["content"] = "";
-			$this->response["isComplete"] = true;
-		} else {
-			// attempt to install this country
-			$currCountryPlugin = $countryPlugins[$index];
-			$this->response["countryName"] = $currCountryPlugin->getName();
-			$this->response["countryFolder"] = $currCountryPlugin->folder;
-			$this->response["isComplete"] = false;
-			try {
-				// always run the uninstallation function first to ensure any old data is all cleared out
-				$currCountryPlugin->uninstall();
-				list($success, $content) = $currCountryPlugin->install();
-				$this->response["success"] = $success;
-				$this->response["content"] = $content;
-			} catch (Exception $e) {
-				$this->response["success"] = false;
-				$this->response["content"] = "Unknown error.";
-			}
-		}
-	}
+        foreach ($exportTypes as $currExportType) {
+            try {
+                list($success, $content) = $currExportType->install();
+                if (!$success) {
+                    $hasError = true;
+                    break;
+                }
+                $folder = $currExportType->getFolder();
+                $results[] = array(
+                    "name"   => $currExportType->getName(),
+                    "folder" => $folder
+                );
+                $folders[] = $folder;
+                $count++;
+            } catch (Exception $e) {
+                $hasError = true;
+                break;
+            }
+        }
+
+        // need error handling here
+        Settings::setSetting("installedExportTypes", implode(",", $folders));
+
+        $this->response["success"] = !$hasError;
+        $this->response["content"] = array(
+            "total" => $count,
+            "results" => $results
+        );
+    }
+
+    private function installCountries() {
+        $countryPlugins = CountryPluginHelper::getCountryPlugins(false);
+        $hasError = false;
+        $results = array();
+        $count = 0;
+        $folders = array();
+
+        foreach ($countryPlugins as $currCountry) {
+
+			// ensure the country uninstalls itself first
+			$currCountry->uninstall();
+
+            try {
+                list($success, $content) = $currCountry->install();
+                if (!$success) {
+                    $hasError = true;
+                    break;
+                }
+                $folder = $currCountry->getFolder();
+                $results[] = array(
+                    "name"   => $currCountry->getName(),
+                    "folder" => $folder
+                );
+                $folders[] = $folder;
+                $count++;
+            } catch (Exception $e) {
+                $hasError = true;
+                break;
+            }
+        }
+
+        // need error handling here
+        Settings::setSetting("installedCountries", implode(",", $folders));
+
+        $this->response["success"] = !$hasError;
+        $this->response["content"] = array(
+            "total" => $count,
+            "results" => $results
+        );
+    }
 }

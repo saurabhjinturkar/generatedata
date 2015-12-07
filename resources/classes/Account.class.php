@@ -23,7 +23,11 @@ class Account {
 	private $firstName;
 	private $lastName;
 	private $email;
+    private $selectedDataTypes;
+    private $selectedExportTypes;
+    private $selectedCountries;
 	private $configurations;
+    private $numRowsGenerated = 0;
 
 
 	/**
@@ -37,7 +41,7 @@ class Account {
 	}
 
 	/**
-	 * Called by the constructor and any time the user updates his user account. 
+	 * Called by the constructor and any time the user updates his/her user account.
 	 */
 	private function getCurrentUser($accountID) {
 		if ($accountID == "anonymousAdmin") {
@@ -46,6 +50,12 @@ class Account {
 			$_SESSION["account_id"] = 1;
 		} else if ($accountID == "anonymousUser") {
 			$this->isAnonymousUser = true;
+
+			// anon users don't have an entry in the accounts table, so we populate the available plugins by pulling
+			// the full list of available plugins right from Settings
+			$this->selectedDataTypes = explode(",", Settings::getSetting("installedDataTypes"));
+			$this->selectedExportTypes = explode(",", Settings::getSetting("installedExportTypes"));
+			$this->selectedCountries = explode(",", Settings::getSetting("installedCountries"));
 		}
 
 		if (is_numeric($accountID)) {
@@ -66,7 +76,10 @@ class Account {
 				$this->firstName = $accountInfo["first_name"];
 				$this->lastName = $accountInfo["last_name"];
 				$this->email = $accountInfo["email"];
-				$this->getConfigurations();
+                $this->selectedDataTypes = explode(",", $accountInfo["selected_data_types"]);
+                $this->selectedExportTypes = explode(",", $accountInfo["selected_export_types"]);
+                $this->selectedCountries = explode(",", $accountInfo["selected_countries"]);
+                $this->getConfigurations();
 				$this->numRowsGenerated = $accountInfo["num_rows_generated"];
 			}
 		}
@@ -184,7 +197,6 @@ class Account {
 					"message" => $L["email_not_sent"]
 				);
 			}
-
 		} catch (Exception $e) {
 			return array(
 				"success" => false,
@@ -193,21 +205,125 @@ class Account {
 		}
 	}
 
+    public static function updateSelectedPlugins($accountID, $dataTypes, $exportTypes, $countries) {
+        $prefix = Core::getDbTablePrefix();
+        $dbLink = Core::$db->getDBLink();
+		$L = Core::$language->getCurrentLanguageStrings();
+
+        $dataTypes   = mysqli_real_escape_string($dbLink, implode(",", $dataTypes));
+        $exportTypes = mysqli_real_escape_string($dbLink, implode(",", $exportTypes));
+        $countries   = mysqli_real_escape_string($dbLink, implode(",", $countries));
+
+        $response = Core::$db->query("
+			UPDATE {$prefix}user_accounts
+			SET selected_data_types = '$dataTypes',
+				selected_export_types = '$exportTypes',
+				selected_countries = '$countries'
+			WHERE account_id = $accountID
+		");
+
+		if ($response["success"]) {
+			$response["message"] = $L["notify_settings_updated"];
+		} else {
+			$response["message"] = $response["errorMessage"];
+		}
+
+		return $response;
+    }
+
 	public function getAccount() {
 		return array(
-			"isAnonymousAdmin" => $this->isAnonymousAdmin,
-			"accountID"        => $this->accountID,
-			"accountType"      => $this->accountType,
-			"dateCreated"      => $this->dateCreated,
-			"lastUpdated"      => $this->lastUpdated,
-			"dateExpires"      => $this->dateExpires,
-			"firstName"        => $this->firstName,
-			"lastName"         => $this->lastName,
-			"email"            => $this->email,
-			"configurations"   => $this->configurations,
-			"numRowsGenerated" => $this->numRowsGenerated
+			"isAnonymousAdmin"    => $this->isAnonymousAdmin,
+			"accountID"           => $this->accountID,
+			"accountType"         => $this->accountType,
+			"dateCreated"         => $this->dateCreated,
+			"lastUpdated"         => $this->lastUpdated,
+			"dateExpires"         => $this->dateExpires,
+			"firstName"           => $this->firstName,
+			"lastName"            => $this->lastName,
+			"email"               => $this->email,
+			"configurations"      => $this->configurations,
+            "selectedDataTypes"   => $this->selectedDataTypes,
+            "selectedExportTypes" => $this->selectedExportTypes,
+            "selectedCountries"   => $this->selectedCountries,
+			"numRowsGenerated"    => $this->numRowsGenerated
 		);
 	}
+
+    /**
+     * Returns the subset of Data Type plugins selected by this user.
+     */
+    public function getDataTypePlugins() {
+        $groupedDataTypes = Core::$dataTypePlugins;
+
+        $whitelistedGroupedDataTypes = array();
+        while (list($group_name, $dataTypes) = each($groupedDataTypes)) {
+            $matched = array();
+            foreach ($dataTypes as $dataType) {
+                if (in_array($dataType->getFolder(), $this->selectedDataTypes)) {
+                    $matched[] = $dataType;
+                }
+            }
+            if (!empty($matched)) {
+                $whitelistedGroupedDataTypes[$group_name] = $matched;
+            }
+        }
+        return $whitelistedGroupedDataTypes;
+    }
+
+    /**
+     * Returns the subset of Export Type plugins selected by this user.
+     */
+    public function getExportTypePlugins() {
+        $exportTypes = Core::$exportTypePlugins;
+
+        $whitelistedExportTypes = array();
+        foreach ($exportTypes as $exportType) {
+            if (in_array($exportType->getFolder(), $this->selectedExportTypes)) {
+                $whitelistedExportTypes[] = $exportType;
+            }
+        }
+        return $whitelistedExportTypes;
+    }
+
+
+	/**
+	 * With 3.2.2, users can now customize the plugins they want to use, so Core::getDefaultExportType() is no longer
+	 * sufficient to figure out what tab should be selected in the UI on page load. This is now used instead.
+	 */
+	public function getDefaultExportType () {
+		$defaultExportType = Core::getDefaultExportType();
+		$exportTypes = $this->getExportTypePlugins();
+
+		// if the default export type isn't selected for this particular user, select the first in the list. Assumption
+		// if that there's always at least one Export Type
+		$found = false;
+		foreach ($exportTypes as $exportType) {
+			$exportTypeClass = get_class($exportType);
+			if ($exportTypeClass == $defaultExportType) {
+				$found = true;
+				break;
+			}
+		}
+		if (!$found) {
+			$defaultExportType = get_class($exportTypes[0]);
+		}
+		return $defaultExportType;
+	}
+
+    /**
+     * Returns the subset of Country plugins selected by this user.
+     */
+    public function getCountryPlugins() {
+        $countryPlugins = Core::$countryPlugins;
+        $whitelistedCountryPlugins = array();
+        foreach ($countryPlugins as $countryPlugin) {
+            if (in_array($countryPlugin->getFolder(), $this->selectedCountries)) {
+                $whitelistedCountryPlugins[] = $countryPlugin;
+            }
+        }
+        return $whitelistedCountryPlugins;
+    }
 
 	public function isAnonymousAdmin() {
 		return $this->isAnonymousAdmin;
@@ -500,13 +616,20 @@ class Account {
 		// TODO - this is weird!
 		$autoEmail   = isset($accountInfo["accountType"]) ? $accountInfo["accountType"] : false;
 
+
 		$L = Core::$language->getCurrentLanguageStrings();
 		$now = Utils::getCurrentDatetime();
 		$prefix = Core::getDbTablePrefix();
+
+		$selectedDataTypes = Settings::getSetting("installedDataTypes");
+		$selectedExportTypes = Settings::getSetting("installedExportTypes");
+		$selectedCountries = Settings::getSetting("installedCountries");
+
 		$result = Core::$db->query("
 			INSERT INTO {$prefix}user_accounts (date_created, last_updated, date_expires, last_logged_in, account_type, 
-				first_name, last_name, email, password)
-			VALUES ('$now', '$now', '$now', NULL, '$accountType', '$firstName', '$lastName', '$email', '$password')
+				first_name, last_name, email, password, selected_data_types, selected_export_types, selected_countries)
+			VALUES ('$now', '$now', '$now', NULL, '$accountType', '$firstName', '$lastName', '$email', '$password',
+				'$selectedDataTypes', '$$selectedExportTypes', '$selectedCountries')
 		");
 
 		$emailSent = false; // not used yet, but we should notify the user via the interface
@@ -666,8 +789,19 @@ class Account {
 		);
 	}
 
+    public function getSelectedDataTypes() {
+        return $this->selectedDataTypes;
+    }
 
-	public function updateRowsGeneratedCount($configurationID, $rowsGenerated) {
+    public function getSelectedExportTypes() {
+        return $this->selectedExportTypes;
+    }
+
+    public function getSelectedCountries() {
+        return $this->selectedCountries;
+    }
+
+    public function updateRowsGeneratedCount($configurationID, $rowsGenerated) {
 		if (!is_numeric($rowsGenerated)) {
 			return;
 		}
@@ -760,4 +894,3 @@ class Account {
     }
 
 }
-

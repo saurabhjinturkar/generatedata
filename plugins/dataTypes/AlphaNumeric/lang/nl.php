@@ -1,7 +1,11 @@
 <?php
 
 $L = array();
-$L["DATA_TYPE_NAME"] = "Alfanumeriek";
+
+$L["DATA_TYPE"] = array(
+    "NAME" => "Alfanumeriek",
+    "DESC" => "Genereert een aangepaste willekeurige alfanumerieke tekenreeks of een lengte of formaat , gedefinieerd door placeholder chars ."
+);
 
 $L["example_CanPostalCode"] = "(Can. Postcode)";
 $L["example_Password"] = "(Wachtwoord)";

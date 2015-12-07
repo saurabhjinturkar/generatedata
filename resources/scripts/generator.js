@@ -125,11 +125,12 @@ define([
       _addRows($("#gdNumRowsToAdd").val());
     });
     $(".gdDeleteRowsBtn").bind("click", _deleteRows);
-    $("#gdResetPluginsBtn").bind("click", _resetPluginsDialog);
     $("#gdTextSize").on("click", "li", _changeTextSize);
     $("#gdGenerationPanelCancel").on("click", _cancelGeneration);
     $("#gdDataSetPublic").on("click", _toggleDataSetVisibilityStatus);
-    $("#gdSettingsForm").on("submit", _submitSettingsForm);
+    $("#gdSettingsForm").on("submit", function (e) { e.preventDefault(); });
+    $("#updateSettingsBtn").on("click", _submitSettingsForm);
+    $("#gdResetPluginsBtn").on("click", _onClickResetPlugins);
     $("#gdNumRowsToGenerate").on("click", _onClickNumRowsField);
     $("input[name=gdExportTarget]").on("change", _onChangeExportTarget);
 
@@ -1080,43 +1081,57 @@ define([
     }
   };
 
-  var _resetPluginsDialog = function () {
-    $("#gdPluginInstallation").dialog({
-      modal: true,
-      resizable: true,
-      title: "Reset Plugins",
-      width: 800,
-      height: 400,
-      open: function () {
-        utils.insertModalSpinner({modalID: "gdPluginInstallation"});
-        utils.playModalSpinner("gdPluginInstallation");
-        pluginManager.installPlugins({
-          errorHandler: null,
-          onCompleteHandler: function () {
-            utils.pauseModalSpinner("gdPluginInstallation");
-            $("#gdPluginInstallation").dialog("option", "buttons", [
-              {
-                text: L.refresh_page,
-                click: function () {
-                  window.location.reload(true); // window.location.replace("index.php?message=plugins_reset#t3");
-                }
-              }
-            ]);
+  var _onClickResetPlugins = function (e) {
+    var useMinified = $(e.target).data("useMinified");
+    if (useMinified) {
+      $("#gdResetPluginsDialog").dialog({
+        modal: true,
+        resizable: true,
+        title: "Reset Plugins",
+        width: 480,
+        height: 200,
+        buttons: [
+          {
+            text: L.close,
+            click: function () {
+              $(this).dialog("close");
+            }
+          },
+          {
+            text: L.reset_plugins,
+            click: function () {
+              $(this).dialog("close");
+              _resetPlugins();
+            }
           }
-        });
-      },
-      buttons: [
-        {
-          text: L.close,
-          click: function () {
-            $(this).dialog("close");
-          }
-        }
-      ]
-    });
-    return false;
+        ]
+      });
+      return;
+    }
+
+    _resetPlugins();
   };
 
+  var _resetPlugins = function () {
+
+
+    pluginManager.installPlugins({
+      context: "update",
+      errorHandler: null,
+      prefill: {
+        dataTypes: pluginManager.getSelectedDataTypes(),
+        exportTypes: pluginManager.getSelectedExportTypes(),
+        countries: pluginManager.getSelectedCountries()
+      },
+      onCompleteHandler: function () {
+        window.scrollTo(0, 0);
+
+        // boy this is awful. Wrap it in a helper!
+        $("#settingsTabMessage").removeClass("gdErrors").addClass("gdNotify").css({ display: 'block' })
+          .find("p").html("The plugin list has been updated. Click the Save button below to save any changes.");
+      }
+    });
+  };
 
   var _changeTextSize = function (e) {
     $("#gdTextSize li").removeClass("gdSelected");
@@ -1619,7 +1634,7 @@ define([
     }
 
     if (!hasErrors) {
-      utils.playModalSpinner("gdMainDialog");
+      utils.playSpinner("gdMainDialog");
       var data = {
         action: "updateAccount",
         accountID: _accountInfo.accountID,
@@ -1637,7 +1652,7 @@ define([
         data: data,
         dataType: "json",
         success: function (response) {
-          utils.pauseModalSpinner("gdMainDialog");
+          utils.pauseSpinner("gdMainDialog");
           if (response.success) {
             $("#gdMainDialogTab1Message").show("blind");
             $(passwordField).val("");
@@ -1647,7 +1662,7 @@ define([
           }
         },
         error: function (response) {
-          utils.pauseModalSpinner("gdMainDialog");
+          utils.pauseSpinner("gdMainDialog");
           console.log("error response: ", response);
         }
       });
@@ -1957,11 +1972,70 @@ define([
     $("#gdLoginDialogContent .gdProblemField").removeClass("gdProblemField");
   };
 
-  var _submitSettingsForm = function (e) {
+  var _submitSettingsForm = function () {
     if (C.DEMO_MODE) {
       _showDemoOnlyDialog();
-      e.preventDefault();
+      return;
     }
+
+    utils.startProcessing();
+    pluginManager.savePlugins({
+      success: _maybeSaveGlobalSettings,
+      error: function (resp) {
+        window.scrollTo(0, 0);
+        $("#settingsTabMessage").addClass("gdErrors").removeClass("gdNotify").css({ display: 'block' })
+          .find("p").html("There was an error saving the plugins. Please report this on github.");
+        utils.stopProcessing();
+      },
+
+      onValidationError: function (error) {
+        window.scrollTo(0, 0);
+        $("#settingsTabMessage").addClass("gdErrors").removeClass("gdNotify").css({ display: 'block' })
+          .find("p").html(error);
+        utils.stopProcessing();
+      }
+    });
+  };
+
+
+  // called after the user-specific settings are updated. If it's an admin, it updates the global settings as well
+  var _maybeSaveGlobalSettings = function (resp) {
+
+    function complete () {
+      window.scrollTo(0, 0);
+      var refreshButton = '<input type="button" value="Refresh Page" onClick="window.location.reload(true)" />'; // TODO translate
+      $("#settingsTabMessage").removeClass("gdErrors").addClass("gdNotify").css({ display: 'block' }).find("p").html(resp.content + ' ' + refreshButton);
+      utils.stopProcessing();
+    }
+
+    if (!_accountInfo.isAnonymous && _accountInfo.accountType != "admin") {
+      return complete();
+    }
+
+    var data = {
+      action: "saveGlobalSettings",
+      consoleWarnings: $("#gdSettingsConsoleWarnings").prop("checked"),
+      consoleEventsPublish: $("#gdSettingsConsoleEventsPublish").prop("checked"),
+      consoleEventsSubscribe: $("#gdSettingsConsoleEventsSubscribe").prop("checked"),
+      consoleCoreEvents: $("#gdSettingsConsoleCoreEvents").prop("checked"),
+      consoleEventsDataTypePlugins: $("#consoleEventsDataTypePlugins").val(),
+      consoleEventsExportTypePlugins: $("#consoleEventsExportTypePlugins").val()
+    };
+
+    $.ajax({
+      url: "ajax.php",
+      type: "POST",
+      dataType: "json",
+      data: data,
+      success: function (response) {
+        if (response.success) {
+          complete();
+        }
+      },
+      error: function () {
+        utils.stopProcessing();
+      }
+    });
   };
 
 
@@ -1984,7 +2058,7 @@ define([
       return false;
     }
 
-    utils.playModalSpinner(_loginModalID);
+    utils.playSpinner(_loginModalID);
     $.ajax({
       url: "ajax.php",
       type: "POST",
@@ -1996,18 +2070,18 @@ define([
       },
       success: function (response) {
         if (response.success) {
-          _getAccount({
-            onComplete: _onLoginComplete
-          });
+          // we explicitly reload the page because the user may have custom plugins selected (added in 3.2.2)
+          window.location = "./";
         } else {
           utils.clearValidationErrors($("#" + _loginModalID));
           utils.addValidationErrors({els: [], error: response.content});
           utils.displayValidationErrors("#gdLoginError");
-          utils.pauseModalSpinner(_loginModalID);
+          utils.pauseSpinner(_loginModalID);
         }
+
       },
       error: function () {
-        utils.pauseModalSpinner(_loginModalID);
+        utils.pauseSpinner(_loginModalID);
       }
     });
   };
@@ -2029,7 +2103,7 @@ define([
     $("#gdUserAccount,#gdLogout").show();
     $("#gdLogin").hide();
 
-    utils.pauseModalSpinner(_loginModalID);
+    utils.pauseSpinner(_loginModalID);
 
     $("#" + _loginModalID).dialog("close");
 

@@ -1,7 +1,11 @@
 <?php
 
 $L = array();
-$L["DATA_TYPE_NAME"] = "Liste";
+
+$L["DATA_TYPE"] = array(
+    "NAME" => "Liste",
+    "DESC" => "Génère une ou plusieurs valeurs aléatoires à partir d'une liste d'objets arbitraire ."
+);
 
 $L["at_most"] = "Au maximum";
 $L["colours"] = "rouge|orange|jaune|vert|bleu|indigo|violet";

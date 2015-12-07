@@ -1,7 +1,11 @@
 <?php
 
 $L = array();
-$L["DATA_TYPE_NAME"] = "Lista personalizada";
+
+$L["DATA_TYPE"] = array(
+    "NAME" => "Lista personalizada",
+    "DESC" => "Genera uno o más valores aleatorios a partir de una lista arbitraria de artículos."
+);
 
 $L["at_most"] = "Al menos";
 $L["colours"] = "rojo|naranja|amarillo|verde|azul|índigo|violeta";

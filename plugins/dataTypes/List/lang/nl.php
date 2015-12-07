@@ -1,7 +1,11 @@
 <?php
 
 $L = array();
-$L["DATA_TYPE_NAME"] = "Aangepaste lijst";
+
+$L["DATA_TYPE"] = array(
+    "NAME" => "Aangepaste lijst",
+    "DESC" => "Genereert een of meer willekeurige waarden uit een willekeurige lijst van items ."
+);
 
 $L["at_most"] = "Op zijn hoogst";
 $L["colours"] = "Rood | Oranje | geel | groen | blauw | indigo | violet";

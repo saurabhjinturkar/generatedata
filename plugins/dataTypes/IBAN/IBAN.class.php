@@ -152,7 +152,7 @@ class DataType_IBAN extends DataTypePlugin {
 		}
 		return self::recalculateChecksum($unsigned);
 	}
-	
+
 	public static function getRandomCountry() {
 		return self::$countryCodes[mt_rand(0, self::$numCountryCodes-1)];
 	}
@@ -177,7 +177,13 @@ class DataType_IBAN extends DataTypePlugin {
 	}
 
 	public function getHelpHTML() {
-		return "<p>{$this->L["help"]}</p>";
+		return <<< END
+            <p>
+                {$this->L["DATA_TYPE"]["DESC"]}<br />
+                {$this->L["help_1"]}<br />
+                {$this->L["help_2"]}<br />
+            </p>
+END;
 	}
 	
 	private static function chr2Int($chr) {

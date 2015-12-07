@@ -1,9 +1,12 @@
 <?php
 
 $L = array();
-$L["DATA_TYPE_NAME"] = "Alfanumérico";
 
-$L["name"] = "Alfanumérico";
+$L["DATA_TYPE"] = array(
+    "NAME" => "Alfanumérico",
+    "DESC" => "Genera una cadena alfanumérica personalizada azar o cualquier longitud o formato, definida por caracteres de marcador de posición ."
+);
+
 $L["example_CanPostalCode"] = "(Código postal canadiense)";
 $L["example_Password"] = "(Contraseña)";
 $L["example_USZipCode"] = "(Código postal yankee)";

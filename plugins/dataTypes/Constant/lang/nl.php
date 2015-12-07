@@ -1,7 +1,11 @@
 <?php
 
 $L = array();
-$L["DATA_TYPE"] = "Constante";
+
+$L["DATA_TYPE"] = array(
+    "NAME" => "Constante",
+    "DESC" => "Genereert een kolom van gegevens die waarden heeft herhaald voor meerdere rijen . U kan alle rijen dezelfde waarde hebben , of wijs dezelfde waarde aan groepen van hen."
+);
 
 $L["help_1"] = "Dit gegevenstype kunt u het genereren van een kolom met gegevens die waarden is het herhalen van rij tot rij. Hier volgt een aantal voorbeelden om u een idee van hoe dit werkt.";
 $L["help_2"] = "Als u wilt de waarde \"1\" voor elke rij geven, kunt u \"1\" in de Waarde (n) veld en elke waarde (> 0) in de Loop veld Aantal.";

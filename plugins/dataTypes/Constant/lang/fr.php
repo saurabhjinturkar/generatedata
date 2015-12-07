@@ -1,7 +1,11 @@
 <?php
 
 $L = array();
-$L["DATA_TYPE_NAME"] = "Constante";
+
+$L["DATA_TYPE"] = array(
+    "NAME" => "Constante",
+    "DESC" => "Génère une colonne de données qui a répétées valeurs pour plusieurs lignes . Vous pouvez faire toutes les lignes ont la même valeur , ou affecter la même valeur à des groupes d'entre eux."
+);
 
 $L["help_1"] = "Ce type de données permet de générer une colonne de données qui répète des valeurs de ligne en ligne. Voici une série d'exemples pour vous donner une idée de son fonctionnement.";
 $L["help_2"] = "Si vous souhaitez avoir la valeur \"1\" pour chaque ligne, vous devez entrer \"1\" dans le champ 'Valeur' et un nombre (> 0) dans le champ 'Boucles'.";
@@ -11,5 +15,4 @@ $L["help_5"] = "Essayez de bricoler un peu avec ce type de données, vous compre
 $L["incomplete_fields"] = "Le type de données Constante nécessite un champ 'Valeur' renseigné. Corrigez les lignes suivantes:";
 $L["invalid_loop_counts"] = "Le type de données Constante nécessite un champ 'Boucles' renseigné. Corrigez les lignes suivantes:";
 $L["loop_count"] = "Boucles:";
-$L["name"] = "Constante";
 $L["values"] = "Valeur:";

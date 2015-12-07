@@ -1,7 +1,11 @@
 <?php
 
 $L = array();
-$L["DATA_TYPE_NAME"] = "Alphanumerisch";
+
+$L["DATA_TYPE"] = array(
+    "NAME" => "Alphanumerisch",
+    "DESC" => "Erzeugt eine benutzerdefinierte zufällige alphanumerische Zeichenfolge oder Länge oder Format , durch Platzhalter Zeichen definiert."
+);
 
 $L["example_CanPostalCode"] = "(Can. PLZ)";
 $L["example_Password"] = "(Password)";

@@ -1,7 +1,11 @@
 <?php
 
 $L = array();
-$L["DATA_TYPE_NAME"] = "Alphanumérique";
+
+$L["DATA_TYPE"] = array(
+    "NAME" => "Alphanumérique",
+    "DESC" => "Génère une chaîne alphanumérique aléatoire coutume ou toute longueur ou le format , définie par les caractères d'espace réservé ."
+);
 
 $L["example_CanPostalCode"] = "(Code postal Canada)";
 $L["example_Password"] = "(Mot de passe)";

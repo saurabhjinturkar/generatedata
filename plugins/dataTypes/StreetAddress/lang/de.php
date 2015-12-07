@@ -1,7 +1,10 @@
 <?php
 
 $L = array();
-$L["DATA_TYPE_NAME"] = "Straße";
+$L["DATA_TYPE"] = array(
+    "NAME" => "Straße",
+    "DESC" => "Generiert zufällige Straßenadressen ."
+);
 
 $L["ap_num"] = "Ap #";
 $L["name"] = "Straße";

@@ -7,8 +7,8 @@
  * @param object $smarty
  */
 function smarty_function_export_type_tabs($params, &$smarty) {
-	$defaultExportType = Core::getDefaultExportType();
-	$exportTypes       = Core::$exportTypePlugins;
+	$defaultExportType = Core::$user->getDefaultExportType();
+	$exportTypes       = Core::$user->getExportTypePlugins();
 
 	echo "<ul>";
 	foreach ($exportTypes as $exportType) {

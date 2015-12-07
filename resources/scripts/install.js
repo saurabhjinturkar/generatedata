@@ -1,10 +1,11 @@
 /*global $:false,browser:true,require:false*/
 require([
 	"manager",
+	"lang",
 	"pluginManager",
 	"utils",
 	"pageInit"
-], function(manager, pluginManager, utils) {
+], function(manager, L, pluginManager, utils) {
 	"use strict";
 
 	// everything in this module is private, but we use the _ notation here just to signify scope
@@ -108,7 +109,7 @@ require([
 		} else if (currentStep === 3) {
 			_setupUserAccounts();
 		} else if (currentStep === 4) {
-			_installPlugins();
+			_installPlugins({ context: "install" });
 		} else if (currentStep === 5) {
 			window.location = "./";
 		}
@@ -346,18 +347,21 @@ require([
 
 	function _installPlugins() {
 		if (!_pluginsInstalled) {
-			utils.startProcessing();
 			$("#gdInstallPluginsBtn").hide();
+
 			pluginManager.installPlugins({
+				context: "install",
 				errorHandler: installError,
-				onCompleteHandler: function() {
-					$("#gdInstallPluginsBtn").html(_L.continue_rightarrow).fadeIn();
+				onCompleteHandler: function () {
 					_pluginsInstalled = true;
-					utils.stopProcessing();
+					_showContinueButton();
 				}
 			});
 		} else {
-			gotoNextStep();
+      pluginManager.savePlugins({
+        success: gotoNextStep,
+        error: installError
+      });
 		}
 	}
 
@@ -376,6 +380,11 @@ require([
 
 		_currStep = nextStep;
 	}
+
+	var _showContinueButton = function () {
+		$("#gdInstallPluginsBtn").html(L.continue_rightarrow).show();
+	};
+
 
 	/**
 	 * In case of any Ajax error.

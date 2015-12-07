@@ -13,11 +13,6 @@ if (!Core::checkIsLoggedIn() && !Core::checkAllowMultiUserAnonymousUse()) {
 
 // start piecing together all the various info we need to pass to the page
 $pageParams = array();
-if (isset($_POST["updateSettings"])) {
-	list($success, $message) = Settings::updateSettings($_POST);
-	$pageParams["success"] = $success;
-	$pageParams["message"] = $message;
-}
 
 $settings = Settings::getSettings();
 $exportTypes = Core::$exportTypePlugins;
@@ -32,6 +27,7 @@ $cssIncludes = $exportTypeCssIncludes . "\n" . $dataTypeCssIncludes;
 // used in the settings page
 $pageParams["allCountryPlugins"] = Core::$countryPlugins;
 $pageParams["allExportTypes"] = $exportTypes;
+$pageParams["groupedDataTypes"] = Core::$dataTypePlugins;
 $pageParams["allDataTypes"] = $dataTypes;
 $pageParams["allTranslations"] = Core::$translations->getList();
 
@@ -47,15 +43,22 @@ $pageParams["exportTypeAdditionalSettings"] = $exportTypeAdditionalSettings;
 $pageParams["settings"] = $settings;
 $pageParams["cssIncludes"] = $cssIncludes;
 $pageParams["codeMirrorIncludes"] = ExportTypePluginHelper::getExportTypeCodeMirrorModes($exportTypes);
-$pageParams["defaultExportType"] = Core::getDefaultExportType();
+$pageParams["defaultExportType"] = Core::$user->getDefaultExportType();
 $pageParams["defaultNumRows"] = Core::getDefaultNumRows();
 
 if (Core::checkIsLoggedIn()) {
 	$pageParams["isLoggedIn"] = true;
 	$pageParams["accountType"] = Core::$user->getAccountType();
+    $pageParams["selectedDataTypes"] = Core::$user->getSelectedDataTypes();
+    $pageParams["selectedExportTypes"] = Core::$user->getSelectedExportTypes();
+    $pageParams["selectedCountries"] = Core::$user->getSelectedCountries();
+	$pageParams["showSettingsTab"] = true;
+	$pageParams["showDeveloperSettings"] = Core::$user->isAdmin() || Core::$user->isAnonymousAdmin();
 } else {
 	$pageParams["isLoggedIn"] = false;
 	$pageParams["accountType"] = "";
+	$pageParams["showDeveloperSettings"] = false;
+	$pageParams["showSettingsTab"] = false;
 }
 
 Templates::displayPage("resources/templates/index.tpl", $pageParams);
